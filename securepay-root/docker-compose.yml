@@ -5,15 +5,6 @@ version: '3.9'
 # Arquitectura de Microservicios + CIA Triad
 # =============================================
 
-networks:
-  # Red interna: solo los servicios backend se comunican entre sí
-  internal-net:
-    driver: bridge
-    internal: true   # Sin acceso a Internet desde esta red
-  # Red pública: solo el gateway es accesible desde el exterior
-  public-net:
-    driver: bridge
-
 volumes:
   postgres-data:
     driver: local
@@ -161,3 +152,10 @@ services:
       timeout:  5s
       retries:  3
       start_period: 20s
+
+networks:
+  internal-net:
+    driver: bridge # Red aislada: Los servicios no se ven desde el exterior, solo vía Gateway
+    internal: true # Sin acceso a Internet desde esta red
+  public-net:
+    driver: bridge # Red pública: solo el gateway es accesible desde el exterior

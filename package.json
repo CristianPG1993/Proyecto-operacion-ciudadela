@@ -1,0 +1,23 @@
+{
+  "name": "proyecto-operacion-ciudadela",
+  "version": "1.0.0",
+  "description": "Sistema de pagos seguro basado en microservicios, diseñado aplicando los principios de la **Tríada CIA** (Confidencialidad, Integridad y Disponibilidad), **Mínimo Privilegio** y protección contra vulnerabilidades OWASP.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CristianPG1993/Proyecto-operacion-ciudadela.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/CristianPG1993/Proyecto-operacion-ciudadela/issues"
+  },
+  "homepage": "https://github.com/CristianPG1993/Proyecto-operacion-ciudadela#readme",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}

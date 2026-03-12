@@ -6,10 +6,6 @@ version: '3.9'
 # (Para la versión completa con gateway y audit-logs, ver securepay-iac/)
 # =============================================
 
-networks:
-  securepay-net:
-    driver: bridge
-
 volumes:
   postgres-data:
     driver: local
@@ -27,8 +23,6 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    ports:
-      - "5432:5432"
     networks:
       - securepay-net
     healthcheck:
@@ -80,3 +74,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+networks:
+  securepay-net:
+    driver: bridge # Red aislada: Los servicios no se ven desde el exterior, solo vía Gateway
