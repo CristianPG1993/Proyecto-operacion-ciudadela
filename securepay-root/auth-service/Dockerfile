@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# Herramientas necesarias para compilar bcrypt (módulo nativo)
+RUN apk add --no-cache python3 make g++
+
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app

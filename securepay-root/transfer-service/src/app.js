@@ -2,12 +2,21 @@
 
 const express = require('express');
 const helmet  = require('helmet'); // Hardening de cabeceras HTTP
+const jwt     = require('jsonwebtoken'); // Para autentificación basada en tokens
 const { body, validationResult } = require('express-validator'); // Sanitización
 const db = require('./database'); // Simulación de DB con Prepared Statements
 
 const app = express();
 app.use(express.json());
 app.use(helmet()); // 🛡️ Defensa en Profundidad: Protege contra ataques web comunes
+const PORT = process.env.TRANSFER_PORT || 3002;
+const pool = new db.Pool({
+    host:     process.env.DB_HOST,
+    port:     parseInt(process.env.DB_PORT),
+    database: process.env.POSTGRES_DB,
+    user:     process.env.POSTGRES_USER,
+    password: process.env.POSTGRES_PASSWORD
+});
 
 // Endpoint de Transferencia con VALIDACIÓN DE ENTRADA (Anti-XSS/SQLi)
 app.post('/transfer', [

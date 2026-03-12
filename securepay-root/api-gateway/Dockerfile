@@ -10,15 +10,15 @@ COPY package.json ./
 RUN npm install --omit=dev
 
 # Copiar código fuente
-COPY server.js ./
+COPY src/server.js ./
 
 # Cambiar propietario al usuario no-root
 RUN chown -R appuser:appgroup /app
 USER appuser
 
-EXPOSE 3000
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -qO- http://localhost:3000/health || exit 1
+    CMD wget -qO- http://localhost:8080/health || exit 1
 
 CMD ["node", "server.js"]

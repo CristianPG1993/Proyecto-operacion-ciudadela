@@ -10,7 +10,7 @@ const jwt            = require('jsonwebtoken');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app  = express();
-const PORT = process.env.API_GATEWAY_PORT || 3000;
+const PORT = process.env.API_GATEWAY_PORT || 8080;
 
 // =============================================
 // SEGURIDAD: Cabeceras HTTP (Helmet)

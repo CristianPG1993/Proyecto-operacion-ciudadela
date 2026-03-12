@@ -135,7 +135,7 @@ services:
       JWT_SECRET:           ${JWT_SECRET}
       NODE_ENV:             ${NODE_ENV}
     ports:
-      - "3000:3000"   # ÚNICO puerto expuesto al host
+      - "8080:8080"   # ÚNICO puerto expuesto al host
     networks:
       - internal-net
       - public-net
@@ -147,7 +147,7 @@ services:
       audit-logs:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 30s
       timeout:  5s
       retries:  3
