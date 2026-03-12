@@ -1,0 +1,82 @@
+version: '3.9'
+
+# =============================================
+# SECUREPAY - VERSIÓN BÁSICA
+# Orquestación: auth-service + transfer-service + postgres
+# (Para la versión completa con gateway y audit-logs, ver securepay-iac/)
+# =============================================
+
+networks:
+  securepay-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: securepay-postgres-basic
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-securepay_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SecureP@ss2024!}
+      POSTGRES_DB:       ${POSTGRES_DB:-securepay_db}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - securepay-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-securepay_admin}"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+
+  auth-service:
+    build:
+      context:    ./auth-service
+      dockerfile: Dockerfile
+    container_name: securepay-auth-basic
+    restart: unless-stopped
+    environment:
+      DB_HOST:           postgres
+      DB_PORT:           5432
+      POSTGRES_DB:       ${POSTGRES_DB:-securepay_db}
+      POSTGRES_USER:     ${POSTGRES_USER:-securepay_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SecureP@ss2024!}
+      JWT_SECRET:        ${JWT_SECRET:-cambiar_este_secreto_en_produccion}
+      AUTH_PORT:         3001
+    ports:
+      - "3001:3001"
+    networks:
+      - securepay-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  transfer-service:
+    build:
+      context:    ./transfer-service
+      dockerfile: Dockerfile
+    container_name: securepay-transfer-basic
+    restart: unless-stopped
+    environment:
+      DB_HOST:           postgres
+      DB_PORT:           5432
+      POSTGRES_DB:       ${POSTGRES_DB:-securepay_db}
+      POSTGRES_USER:     ${POSTGRES_USER:-securepay_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SecureP@ss2024!}
+      JWT_SECRET:        ${JWT_SECRET:-cambiar_este_secreto_en_produccion}
+      TRANSFER_PORT:     3002
+    ports:
+      - "3002:3002"
+    networks:
+      - securepay-net
+    depends_on:
+      postgres:
+        condition: service_healthy

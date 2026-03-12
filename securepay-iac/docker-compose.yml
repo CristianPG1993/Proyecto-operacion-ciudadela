@@ -1,0 +1,163 @@
+version: '3.9'
+
+# =============================================
+# SECUREPAY IAC - ORQUESTACIÓN DOCKER COMPOSE
+# Arquitectura de Microservicios + CIA Triad
+# =============================================
+
+networks:
+  # Red interna: solo los servicios backend se comunican entre sí
+  internal-net:
+    driver: bridge
+    internal: true   # Sin acceso a Internet desde esta red
+  # Red pública: solo el gateway es accesible desde el exterior
+  public-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+
+services:
+
+  # ──────────────────────────────────────────
+  # BASE DE DATOS PostgreSQL
+  # ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: securepay-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB:       ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - internal-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+      start_period: 20s
+    # Puerto NO expuesto al host (seguridad: DB solo accesible internamente)
+
+  # ──────────────────────────────────────────
+  # AUTH SERVICE
+  # ──────────────────────────────────────────
+  auth-service:
+    build:
+      context:    ./auth-service
+      dockerfile: Dockerfile
+    container_name: securepay-auth
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST:           postgres
+      POSTGRES_DB:       ${POSTGRES_DB}
+      JWT_SECRET:        ${JWT_SECRET}
+      JWT_EXPIRES_IN:    ${JWT_EXPIRES_IN}
+      NODE_ENV:          ${NODE_ENV}
+    networks:
+      - internal-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/auth/health || exit 1"]
+      interval: 30s
+      timeout:  5s
+      retries:  3
+      start_period: 15s
+
+  # ──────────────────────────────────────────
+  # TRANSFER SERVICE
+  # ──────────────────────────────────────────
+  transfer-service:
+    build:
+      context:    ./transfer-service
+      dockerfile: Dockerfile
+    container_name: securepay-transfer
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST:          postgres
+      POSTGRES_DB:      ${POSTGRES_DB}
+      AUDIT_SERVICE_URL: http://audit-logs:3003
+      NODE_ENV:         ${NODE_ENV}
+    networks:
+      - internal-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      audit-logs:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/transfer/health || exit 1"]
+      interval: 30s
+      timeout:  5s
+      retries:  3
+      start_period: 15s
+
+  # ──────────────────────────────────────────
+  # AUDIT LOGS SERVICE
+  # ──────────────────────────────────────────
+  audit-logs:
+    build:
+      context:    ./audit-logs
+      dockerfile: Dockerfile
+    container_name: securepay-audit
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST:     postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      NODE_ENV:    ${NODE_ENV}
+    networks:
+      - internal-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3003/audit/health || exit 1"]
+      interval: 30s
+      timeout:  5s
+      retries:  3
+      start_period: 15s
+
+  # ──────────────────────────────────────────
+  # API GATEWAY (único punto de entrada público)
+  # ──────────────────────────────────────────
+  api-gateway:
+    build:
+      context:    ./api-gateway
+      dockerfile: Dockerfile
+    container_name: securepay-gateway
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      AUTH_SERVICE_URL:     http://auth-service:3001
+      TRANSFER_SERVICE_URL: http://transfer-service:3002
+      AUDIT_SERVICE_URL:    http://audit-logs:3003
+      JWT_SECRET:           ${JWT_SECRET}
+      NODE_ENV:             ${NODE_ENV}
+    ports:
+      - "3000:3000"   # ÚNICO puerto expuesto al host
+    networks:
+      - internal-net
+      - public-net
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      transfer-service:
+        condition: service_healthy
+      audit-logs:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout:  5s
+      retries:  3
+      start_period: 20s
